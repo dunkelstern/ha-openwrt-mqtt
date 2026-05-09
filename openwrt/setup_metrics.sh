@@ -105,7 +105,8 @@ publish_metric() {
             -P "\$MQTT_PASSWORD" \\
             -t "\$full_topic" \\
             -m "\$payload" \\
-            -q 1
+            -q 0 \\
+            --nodelay
     elif [ "\$PUBLISH_METHOD" = "http" ]; then
         curl -s -X POST \\
             -H "Authorization: Bearer \$HA_TOKEN" \\
@@ -203,11 +204,41 @@ for INTERFACE in \$(ls /sys/class/net/ | grep -v lo); do
     TX_DROPPED=\$(cat /sys/class/net/\$INTERFACE/statistics/tx_dropped)
     RX_ERRORS=\$(cat /sys/class/net/\$INTERFACE/statistics/rx_errors)
     TX_ERRORS=\$(cat /sys/class/net/\$INTERFACE/statistics/tx_errors)
+    STATE=\$(cat /sys/class/net/\$INTERFACE/operstate)
 
     publish_metric "interface-\$INTERFACE/if_octets"  "rx:\$RX_BYTES,tx:\$TX_BYTES"
     publish_metric "interface-\$INTERFACE/if_packets" "rx:\$RX_PACKETS,tx:\$TX_PACKETS"
     publish_metric "interface-\$INTERFACE/if_dropped" "rx:\$RX_DROPPED,tx:\$TX_DROPPED"
     publish_metric "interface-\$INTERFACE/if_errors"  "rx:\$RX_ERRORS,tx:\$TX_ERRORS"
+
+    if [ "\$STATE" = "up" ] ; then
+        CARRIER=\$(cat /sys/class/net/\$INTERFACE/carrier)
+        SPEED=\$(cat /sys/class/net/\$INTERFACE/speed)
+        V4_ADDR=\$(ip -4 -br address show dev \$INTERFACE)
+        V6_ADDR=\$(ip -6 -br address show dev \$INTERFACE)
+        V4_ADDR=\$(echo \$V4_ADDR|sed -e 's/'\$INTERFACE' [^ ]* //')
+        V6_ADDR=\$(echo \$V6_ADDR|sed -e 's/'\$INTERFACE' [^ ]* //')
+    else
+        CARRIER=
+        SPEED=
+        V4_ADDR=
+        V6_ADDR=
+    fi
+
+    publish_metric "interface-\$INTERFACE/carrier" "\$CARRIER"
+    publish_metric "interface-\$INTERFACE/speed" "\$SPEED"
+
+    IDX=0
+    for ADDR in \$V4_ADDR ; do
+        publish_metric "interface-\$INTERFACE/ipv4_\$IDX" "\$ADDR"
+        IDX=\$((\$IDX + 1))
+    done
+
+    IDX=0
+    for ADDR in \$V6_ADDR ; do
+        publish_metric "interface-\$INTERFACE/ipv6_\$IDX" "\$ADDR"
+        IDX=\$((\$IDX + 1))
+    done
 done
 SCRIPT_END
 

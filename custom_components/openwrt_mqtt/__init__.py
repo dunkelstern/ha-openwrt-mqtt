@@ -1,10 +1,18 @@
 """The OpenWrt MQTT integration."""
+
 import logging
 import re
+
+from homeassistant.components import mqtt
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.components import mqtt
-from .const import DOMAIN, DEFAULT_TOPIC_PREFIX, DISCOVERY_TOPICS, DEFAULT_TEMPERATURE_UNIT
+
+from .const import (
+    DEFAULT_TEMPERATURE_UNIT,
+    DEFAULT_TOPIC_PREFIX,
+    DISCOVERY_TOPICS,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -66,7 +74,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigType) -> bool:
                 "entities": {},
             }
             _LOGGER.info(
-                "Discovered new OpenWrt device: %s (entry: %s)", hostname, entry.entry_id
+                "Discovered new OpenWrt device: %s (entry: %s)",
+                hostname,
+                entry.entry_id,
             )
 
         # Update device information if it's system info
@@ -85,7 +95,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigType) -> bool:
             if re.match(pattern, metric_type):
                 should_create_entity = True
                 _LOGGER.debug(
-                    "Topic %s matches discovery pattern %s", metric_type, discovery_topic
+                    "Topic %s matches discovery pattern %s",
+                    metric_type,
+                    discovery_topic,
                 )
                 break
 
@@ -113,7 +125,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigType) -> bool:
                     "entity_id": entity_id,
                     "hostname": hostname,
                     "entry_id": entry.entry_id,
-                    "temperature_unit": entry.data.get("temperature_unit", DEFAULT_TEMPERATURE_UNIT),
+                    "temperature_unit": entry.data.get(
+                        "temperature_unit", DEFAULT_TEMPERATURE_UNIT
+                    ),
                 }
 
                 for uid in unique_ids:
@@ -128,6 +142,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigType) -> bool:
                 # If the add_entities callback is available, create entities immediately
                 if entry_data["add_entities_callback"] is not None:
                     from homeassistant.helpers.device_registry import DeviceInfo
+
                     from .sensor import create_sensors_for_metric
 
                     device_info = entry_data["devices"][hostname]
@@ -154,7 +169,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigType) -> bool:
 
     # Subscribe to MQTT topic for THIS entry only
     await mqtt.async_subscribe(hass, f"{topic_prefix}#", mqtt_message_received, qos=0)
-    _LOGGER.info("Subscribed to MQTT topic: %s# (entry: %s)", topic_prefix, entry.entry_id)
+    _LOGGER.info(
+        "Subscribed to MQTT topic: %s# (entry: %s)", topic_prefix, entry.entry_id
+    )
 
     # Initial sensor configuration
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
@@ -162,7 +179,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigType) -> bool:
     return True
 
 
-def generate_unique_ids_for_metric(entry_id: str, hostname: str, metric_type: str) -> list:
+def generate_unique_ids_for_metric(
+    entry_id: str, hostname: str, metric_type: str
+) -> list:
     """Generate all unique_ids that will be created for a given metric type.
 
     Le entry_id est inclus dans chaque unique_id pour garantir l'unicité

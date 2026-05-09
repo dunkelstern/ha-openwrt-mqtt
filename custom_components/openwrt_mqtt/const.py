@@ -29,4 +29,8 @@ DISCOVERY_TOPICS = [
     "interface-+/if_errors",
     "interface-+/if_dropped",
     "interface-+/if_packets",
+    "interface-+/carrier",
+    "interface-+/speed",
+    "interface-+/ipv4_+",
+    "interface-+/ipv6_+",
 ]
